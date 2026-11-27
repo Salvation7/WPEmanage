@@ -1,8 +1,9 @@
 const { app, BrowserWindow, clipboard, dialog, ipcMain, net, protocol, shell } = require('electron');
+const { spawn } = require('node:child_process');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
-const { discoverSources, scanLibrary } = require('./library.cjs');
+const { discoverSources, discoverWallpaperLauncher, scanLibrary } = require('./library.cjs');
 const { isWorkshopId, createMoveBatch, readMoveHistory, writeMoveBatch } = require('./move-history.cjs');
 const { transferVideos } = require('./transfer.cjs');
 
@@ -216,6 +217,19 @@ function registerActions() {
   handle('library:open-workshop', async (_event, id) => {
     workshopTitle(id);
     await shell.openExternal(workshopUrl(id));
+  });
+
+  handle('library:open-wallpaper-engine', async () => {
+    const executable = await discoverWallpaperLauncher();
+    if (!executable) throw new Error('在当前 Steam 库中找不到 Wallpaper Engine 的启动程序。');
+    await new Promise((resolve, reject) => {
+      const launcher = spawn(executable, [], { cwd: path.dirname(executable), detached: true, stdio: 'ignore' });
+      launcher.once('error', () => reject(new Error('无法启动 Wallpaper Engine。')));
+      launcher.once('spawn', () => {
+        launcher.unref();
+        resolve();
+      });
+    });
   });
 
   handle('library:copy-workshop-list', (_event, ids) => {

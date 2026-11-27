@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('shelf', {
   listMoveHistory: () => ipcRenderer.invoke('library:list-move-history'),
   openMoveDestination: id => ipcRenderer.invoke('library:open-move-destination', id),
   openWorkshop: id => ipcRenderer.invoke('library:open-workshop', id),
+  openWallpaperEngine: () => ipcRenderer.invoke('library:open-wallpaper-engine'),
   copyWorkshopList: ids => ipcRenderer.invoke('library:copy-workshop-list', ids),
   showOutput: () => ipcRenderer.invoke('library:show-output'),
   onProgress: listener => ipcRenderer.on('library:progress', (_event, progress) => listener(progress))

@@ -85,22 +85,29 @@ async function steamLibraries(root) {
   return [root, ...Array.from(libraryEntries, entry => unescapeVdf(entry[1])).filter(candidate => path.isAbsolute(candidate))];
 }
 
-async function steamSources(root) {
+async function wallpaperInstall(root) {
   const manifest = await steamFile(root, `appmanifest_${workshopAppId}.acf`);
   const installName = manifest.match(/"installdir"\s*"((?:\\.|[^"\\])+)"/i)?.[1];
   const decodedName = installName ? unescapeVdf(installName) : 'wallpaper_engine';
-  const appDirectory = /[/\\:\0]/.test(decodedName) || decodedName === '.' || decodedName === '..' ? 'wallpaper_engine' : decodedName;
-  const steamapps = path.join(root, 'steamapps');
-  const projects = path.join(steamapps, 'common', appDirectory, 'projects');
+  const validName = !/[/\\:\0]/.test(decodedName) && decodedName !== '.' && decodedName !== '..';
+  const commonDirectory = path.join(root, 'steamapps', 'common');
+  const directory = path.join(commonDirectory, validName ? decodedName : 'wallpaper_engine');
+  const appId = manifest.match(/"appid"\s*"(\d+)"/i)?.[1];
+  return { commonDirectory, directory, hasManifest: Boolean(installName && validName && appId === workshopAppId) };
+}
+
+async function steamSources(root) {
+  const install = await wallpaperInstall(root);
+  const projects = path.join(install.directory, 'projects');
 
   return [
-    { path: path.join(steamapps, 'workshop', 'content', workshopAppId), label: 'Steam 创意工坊' },
+    { path: path.join(root, 'steamapps', 'workshop', 'content', workshopAppId), label: 'Steam 创意工坊' },
     { path: path.join(projects, 'myprojects'), label: '本地项目' },
     { path: path.join(projects, 'defaultprojects'), label: '内置壁纸' },
   ];
 }
 
-async function discoverSources() {
+async function discoverSteamLibraries() {
   if (process.platform !== 'win32') return [];
 
   const registry = await Promise.all([
@@ -119,14 +126,39 @@ async function discoverSources() {
   }
 
   const libraries = (await Promise.all([...roots.values()].map(steamLibraries))).flat();
-  const uniqueLibraries = new Map(libraries.map(directory => [pathKey(path.normalize(directory)), directory]));
-  const possibleSources = (await Promise.all([...uniqueLibraries.values()].map(steamSources))).flat();
+  return [...new Map(libraries.map(directory => [pathKey(path.normalize(directory)), directory])).values()];
+}
+
+async function discoverSources() {
+  const libraries = await discoverSteamLibraries();
+  const possibleSources = (await Promise.all(libraries.map(steamSources))).flat();
   const sources = new Map();
   for (const source of possibleSources) {
     const directory = await resolveDirectory(source.path);
     if (directory) sources.set(pathKey(directory), { ...source, path: directory });
   }
   return [...sources.values()];
+}
+
+async function discoverWallpaperLauncher() {
+  const libraries = await discoverSteamLibraries();
+  const installs = await Promise.all(libraries.map(wallpaperInstall));
+  const is64BitWindows = process.arch !== 'ia32' || Boolean(process.env.PROCESSOR_ARCHITEW6432);
+  const names = is64BitWindows
+    ? ['launcher.exe', 'wallpaper64.exe', 'wallpaper32.exe'] : ['launcher.exe', 'wallpaper32.exe'];
+
+  for (const install of installs) {
+    if (!install.hasManifest) continue;
+    const directory = await resolveDirectory(install.directory);
+    if (!directory || !inside(install.commonDirectory, directory)) continue;
+
+    for (const name of names) {
+      const candidate = path.join(directory, name);
+      const executable = await checkedFile(directory, candidate);
+      if (executable && pathKey(executable.path) === pathKey(candidate)) return executable.path;
+    }
+  }
+  return null;
 }
 
 async function projectMetadata(directory, fileName) {
@@ -321,4 +353,4 @@ async function scanLibrary(sources) {
   return { projects: [...projects.values()], issues };
 }
 
-module.exports = { discoverSources, scanLibrary };
+module.exports = { discoverSources, discoverWallpaperLauncher, scanLibrary };

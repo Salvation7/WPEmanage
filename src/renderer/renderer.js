@@ -393,7 +393,7 @@ function showTransferReport(report, mode, fromHistory = false) {
     return `<li><div><strong>${escape(result.title)}</strong><small>${escape(result.message || result.destination || '')}</small>${workshopLink}</div><span class="result-status ${['skipped', 'failed'].includes(result.status) ? 'incomplete' : ''}">${labels[result.status] || '未知'}</span></li>`;
   }).join('');
   const workshopSummary = workshopIds.length
-    ? `<p class="workshop-summary">本批移出 ${workshopIds.length} 个创意工坊项目。可在 Wallpaper Engine「已安装」中按住 Ctrl 多选对应项目，再右键「取消订阅」。</p>` : '';
+    ? `<div class="workshop-summary"><p>本批移出 ${workshopIds.length} 个创意工坊项目。可在 Wallpaper Engine「已安装」中按住 Ctrl 多选对应项目，再右键「取消订阅」。</p><button class="button" data-icon="external" data-action="open-wallpaper-engine">打开 Wallpaper Engine</button></div>` : '';
   const openDestination = fromHistory ? () => api.openMoveDestination(report.id) : api.showOutput;
   const actions = [{ label: '打开目标目录', action: () => safely(openDestination) }];
   if (workshopIds.length) actions.push({ label: '复制工坊清单', action: () => copyWorkshopList(workshopIds) });
@@ -543,9 +543,14 @@ $('details').addEventListener('click', event => {
   if (action === 'preview') preview(project);
   if (action === 'play') safely(() => api.play(project.id));
 });
-$('modal-content').addEventListener('click', event => {
-  const button = event.target.closest('button[data-workshop-id]');
-  if (button) safely(() => api.openWorkshop(button.dataset.workshopId));
+$('modal-content').addEventListener('click', async event => {
+  const button = event.target.closest('button');
+  if (button?.dataset.workshopId) safely(() => api.openWorkshop(button.dataset.workshopId));
+  if (button?.dataset.action === 'open-wallpaper-engine') {
+    button.disabled = true;
+    await safely(api.openWallpaperEngine);
+    button.disabled = false;
+  }
 });
 $('empty').addEventListener('click', event => {
   if (event.target.dataset.action === 'add') load(api.addSource, '选择目录');

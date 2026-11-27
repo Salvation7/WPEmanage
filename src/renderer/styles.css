@@ -170,6 +170,8 @@ dialog::backdrop { background: #040906ab; }
 .modal-feedback { color: var(--accent); padding: 0 17px 10px; margin: 0; font-size: 12px; }
 .history-list .button { font-size: 12px; min-height: 32px; flex: 0 0 auto; }
 .workshop-summary { margin: 12px 0; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); padding: 9px 11px; }
+.workshop-summary p { margin: 0 0 9px; }
+.workshop-summary .button { min-height: 32px; font-size: 12px; }
 .workshop-link { margin-top: 5px; }
 .modal-actions { justify-content: flex-end; border-top: 1px solid var(--line); }
 .modal-list { padding: 0; margin: 0; list-style: none; }
