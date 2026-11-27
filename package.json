@@ -1,0 +1,15 @@
+{
+  "name": "wallpaper-shelf",
+  "productName": "Wallpaper Shelf",
+  "version": "1.3.0",
+  "private": true,
+  "description": "A local library for managing downloaded Wallpaper Engine projects.",
+  "main": "src/main/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "build": "node scripts/package.cjs"
+  },
+  "devDependencies": {
+    "electron": "45.4.1"
+  }
+}

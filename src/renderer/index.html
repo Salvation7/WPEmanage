@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' shelf-media:; media-src shelf-media:">
+  <title>壁纸库 · Wallpaper Shelf</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="marquee.js" defer></script>
+  <script src="renderer.js" defer></script>
+</head>
+<body>
+  <header class="titlebar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><strong>壁纸库</strong><span class="brand-divider"></span><span class="brand-en" lang="en">Wallpaper Shelf</span></div>
+    <div class="title-actions">
+      <button class="button top-button" id="rescan" data-icon="refresh" title="重新扫描（F5）">重新扫描</button>
+      <button class="button top-button" id="add-source" data-icon="add">添加目录</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <aside class="sidebar" aria-label="壁纸分类">
+      <div class="sidebar-main">
+        <h2 class="sidebar-label">项目库</h2>
+        <nav id="categories" aria-label="项目类型"></nav>
+      </div>
+      <div class="sidebar-bottom">
+        <button class="nav-item" id="move-history" data-icon="history" title="移动记录" aria-label="移动记录" aria-haspopup="dialog"><span class="nav-text">移动记录</span></button>
+        <button class="nav-item" id="source-settings" data-icon="folder" title="库目录" aria-label="库目录"><span class="nav-text">库目录</span><span class="nav-count" id="source-count">0</span></button>
+        <button class="nav-item scan-status" id="scan-status" aria-haspopup="dialog" disabled><span class="status-dot" aria-hidden="true"></span><span class="nav-text" id="scan-label">正在扫描</span></button>
+      </div>
+    </aside>
+
+    <main class="library-pane" aria-labelledby="page-title">
+      <div class="library-header">
+        <div class="page-heading"><h1 id="page-title">全部壁纸</h1><span class="item-count" id="item-count" aria-live="polite"></span></div>
+        <div class="toolbar" role="group" aria-label="搜索与筛选">
+          <label class="search-box" data-icon="search">
+            <input id="search" type="search" placeholder="搜索标题、格式或项目 ID" aria-label="搜索标题、格式或项目 ID" autocomplete="off">
+            <kbd aria-hidden="true">Ctrl K</kbd>
+          </label>
+          <label class="select-box" data-icon="filter"><select id="format" aria-label="文件格式"><option value="">全部格式</option></select></label>
+          <label class="select-box" data-icon="sort">
+            <select id="sort" aria-label="排序方式">
+              <option value="modified">最近修改</option><option value="name">项目名称</option><option value="size">文件大小</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div class="collection" id="collection">
+        <div class="project-grid" id="projects" aria-label="壁纸项目"></div>
+        <div id="empty" class="empty-state" hidden></div>
+      </div>
+    </main>
+
+    <aside class="details-pane" aria-label="项目详情">
+      <div class="details-heading"><span data-icon="info" aria-hidden="true"></span><h2>项目详情</h2></div>
+      <div class="details-body" id="details"></div>
+    </aside>
+  </div>
+
+  <footer class="batch-bar" aria-label="批量视频操作">
+    <div class="batch-selection">
+      <label class="batch-check" title="选择当前筛选结果（Ctrl+A）"><input id="select-all" type="checkbox"><span>全选当前结果</span></label>
+      <span class="batch-divider"></span>
+      <span class="batch-summary" id="selection-summary" aria-live="polite">已选 0 项</span>
+      <button class="text-button" id="clear-selection" title="清空选择（Esc）" hidden>清空</button>
+      <button class="text-button" id="copy-workshop-selection" title="复制所选项目的名称、工坊 ID 和链接" hidden>复制工坊清单</button>
+    </div>
+    <div class="batch-actions">
+      <button class="button" id="batch-move" data-icon="cut" disabled>移动视频</button>
+      <button class="button primary" id="batch-copy" data-icon="copy" disabled>复制视频</button>
+    </div>
+  </footer>
+
+  <div class="selection-rectangle" id="selection-rectangle" aria-hidden="true" hidden></div>
+  <div class="toast" id="toast" role="status" hidden></div>
+  <dialog id="transfer-progress" aria-labelledby="transfer-progress-title">
+    <div class="modal-heading">
+      <h2 id="transfer-progress-title">传输进度</h2>
+      <form method="dialog"><button class="icon-button" data-icon="close" aria-label="收起传输进度"></button></form>
+    </div>
+    <div class="modal-content transfer-content">
+      <div class="transfer-meter">
+        <div class="transfer-meter-heading"><span id="transfer-progress-overall-label">总体进度</span><strong id="transfer-progress-percent">0%</strong></div>
+        <progress id="transfer-progress-overall" max="100" value="0" aria-labelledby="transfer-progress-overall-label"></progress>
+        <div class="transfer-meter-caption"><span id="transfer-progress-count"></span><span id="transfer-progress-bytes"></span></div>
+      </div>
+      <div class="transfer-meter current-file" id="transfer-progress-file-panel" hidden>
+        <div class="transfer-meter-heading"><span id="transfer-progress-current-label">当前文件</span><span id="transfer-progress-file-index"></span></div>
+        <p id="transfer-progress-file" dir="auto"></p>
+        <progress id="transfer-progress-current" max="100" value="0" aria-labelledby="transfer-progress-current-label" aria-describedby="transfer-progress-file"></progress>
+        <div class="transfer-meter-caption" id="transfer-progress-file-bytes"></div>
+      </div>
+      <p id="transfer-progress-activity" role="status"></p>
+      <dl id="transfer-progress-destination" class="transfer-destination" hidden><dt>目标文件夹</dt><dd id="transfer-progress-path"></dd></dl>
+    </div>
+    <form method="dialog" class="modal-actions"><button class="button" autofocus>收起</button></form>
+  </dialog>
+  <dialog id="modal" aria-labelledby="modal-title">
+    <div class="modal-heading"><h2 id="modal-title"></h2><form method="dialog"><button class="icon-button" data-icon="close" aria-label="关闭"></button></form></div>
+    <div class="modal-content" id="modal-content"></div>
+    <p class="modal-feedback" id="modal-feedback" role="status" hidden></p>
+    <div class="modal-actions" id="modal-actions"></div>
+  </dialog>
+</body>
+</html>
